@@ -5,13 +5,10 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
-import android.net.http.SslError
 import android.os.Message
 import android.util.Log
-import android.view.KeyEvent
 import android.view.View
 import android.webkit.CookieManager
-import android.webkit.SslErrorHandler
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
@@ -28,13 +25,12 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
 import java.io.IOException
-import java.lang.StringBuilder
 import java.net.URLDecoder
 
 @SuppressLint("SetJavaScriptEnabled", "ViewConstructor")
 class CustomWebView(
     private val context: Context,
-    private val clientCallback: OkHttpClientCallback
+    private val clientCallback: ClientCallback
 ): WebView(context), Callback {
     private val okHttpClient = OkHttpClient()
 
