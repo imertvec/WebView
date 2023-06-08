@@ -1,5 +1,6 @@
 package ru.vagavagus.customwebview
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
@@ -35,6 +36,10 @@ fun WebView(
 
     LaunchedEffect(key1 = webView) {
         webView?.doPost(url = url, deviceInfo = deviceInfo)
+    }
+
+    BackHandler {
+        webView?.goBack()
     }
 
     Box(modifier = modifier) {
