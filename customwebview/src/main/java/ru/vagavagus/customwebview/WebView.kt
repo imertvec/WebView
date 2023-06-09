@@ -1,6 +1,18 @@
 package ru.vagavagus.customwebview
 
+import android.app.DownloadManager
+import android.net.Uri
+import android.os.Environment
+import android.util.Log
+import android.webkit.CookieManager
+import android.webkit.URLUtil
+import android.webkit.ValueCallback
+import android.webkit.WebChromeClient.FileChooserParams
+import android.widget.Toast
+import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
@@ -33,6 +45,17 @@ fun WebView(
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf("") }
     var webView: CustomWebView? by remember { mutableStateOf(null) }
+    var uploadMessage: ValueCallback<Array<Uri?>?>? by remember { mutableStateOf(null) }
+
+    val activityResult = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { activityResult ->
+        if(activityResult.data != null) {
+            Log.e("onActivityResult", "called: uploadMessage=$uploadMessage")
+            uploadMessage?.onReceiveValue(FileChooserParams.parseResult(activityResult.resultCode, activityResult.data))
+            uploadMessage = null
+        }
+    }
 
     LaunchedEffect(key1 = webView) {
         webView?.doPost(url = url, deviceInfo = deviceInfo)
@@ -55,8 +78,38 @@ fun WebView(
                         override fun onError(exception: Exception) {
                             responseType = exception.message
                         }
+
+                        override fun onShowFileChooser(
+                            fileChooserParams: FileChooserParams,
+                            filePathCallback: ValueCallback<Array<Uri?>?>?
+                        ) {
+                            uploadMessage = filePathCallback
+                            val intent = fileChooserParams.createIntent()
+                            activityResult.launch(intent)
+                        }
                     }
                 )
+
+                webView!!.setDownloadListener { url, userAgent, contentDisposition, mimetype, _ ->
+                    val request = DownloadManager.Request(Uri.parse(url))
+                    request.setMimeType(mimetype)
+
+                    val cookies = CookieManager.getInstance().getCookie(url)
+
+                    request.apply {
+                        addRequestHeader("cookie", cookies)
+                        addRequestHeader("User-Agent", userAgent)
+                        setDescription("Downloading file...")
+                        setTitle(URLUtil.guessFileName(url, contentDisposition, mimetype))
+                        allowScanningByMediaScanner()
+                        setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                        setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, "Downloads")
+                    }
+
+                    val downloadManager = context.getSystemService(ComponentActivity.DOWNLOAD_SERVICE) as DownloadManager
+                    downloadManager.enqueue(request)
+                    Toast.makeText(context, "Downloading file..", Toast.LENGTH_SHORT).show()
+                }
                 webView!!
             }
         )
@@ -86,7 +139,6 @@ fun WebView(
                 loading = false
             }
         }
-
 
         if(loading)
             CircularProgressIndicator(

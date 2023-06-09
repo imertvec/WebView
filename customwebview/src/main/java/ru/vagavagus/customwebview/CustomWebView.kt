@@ -1,6 +1,7 @@
 package ru.vagavagus.customwebview
 
 import android.annotation.SuppressLint
+import android.content.ActivityNotFoundException
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -12,11 +13,14 @@ import android.webkit.CookieManager
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.FrameLayout
 import androidx.activity.ComponentActivity
+import androidx.webkit.WebViewAssetLoader
+import androidx.webkit.WebViewAssetLoader.AssetsPathHandler
 import com.google.gson.Gson
 import okhttp3.Call
 import okhttp3.Callback
@@ -27,8 +31,9 @@ import okhttp3.Response
 import java.io.IOException
 import java.net.URLDecoder
 
+
 @SuppressLint("SetJavaScriptEnabled", "ViewConstructor")
-class CustomWebView(
+class CustomWebView (
     private val context: Context,
     private val clientCallback: ClientCallback
 ): WebView(context), Callback {
@@ -39,17 +44,14 @@ class CustomWebView(
             javaScriptEnabled = true
             domStorageEnabled = true
             databaseEnabled = true
+            loadWithOverviewMode = true
+            loadsImagesAutomatically = true
+            javaScriptCanOpenWindowsAutomatically = true
+            mediaPlaybackRequiresUserGesture = true
             cacheMode = WebSettings.LOAD_CACHE_ELSE_NETWORK
             setSupportZoom(false)
-
-            loadWithOverviewMode = true
-            allowFileAccess = true
-            allowContentAccess = true
-
             webViewClient = CustomWebViewClient()
             webChromeClient = CustomWebChromeClient()
-
-
         }
 
         isFocusableInTouchMode = true
@@ -72,12 +74,25 @@ class CustomWebView(
     }
 
     private inner class CustomWebViewClient: WebViewClient() {
+        private val tag = this::class.simpleName
+        private val assetLoader = WebViewAssetLoader.Builder()
+            .addPathHandler("/assets/", AssetsPathHandler(context))
+            .build()
+
+        override fun shouldInterceptRequest(
+            view: WebView?,
+            request: WebResourceRequest?
+        ): WebResourceResponse? {
+            return request?.url?.let { assetLoader.shouldInterceptRequest(it) }
+        }
+
         override fun shouldOverrideUrlLoading(
             view: WebView?,
             request: WebResourceRequest?
         ): Boolean {
             return try {
                 val url = URLDecoder.decode(request?.url.toString(), "UTF-8")
+                Log.e(tag, "shouldOverrideUrlLoading: $url");
                 view?.loadUrl(url)
                 true
             } catch (e: Exception) {
@@ -117,23 +132,26 @@ class CustomWebView(
         }
 
         override fun onShowFileChooser(
-            webView: WebView?,
-            filePathCallback: ValueCallback<Array<Uri>>?,
-            fileChooserParams: FileChooserParams?
+            mWebView: WebView?,
+            filePathCallback: ValueCallback<Array<Uri?>?>,
+            fileChooserParams: FileChooserParams
         ): Boolean {
-            Log.e(tag, "onShowFileChooser: called")
-            return true
+            return try {
+                clientCallback.onShowFileChooser(fileChooserParams, filePathCallback)
+                true
+            } catch (e: ActivityNotFoundException) {
+                clientCallback.onShowFileChooser(fileChooserParams, null)
+                false
+            }
         }
 
         //MARK: fullscreen implementation
         override fun getDefaultVideoPoster(): Bitmap? {
-            Log.e(tag, "getDefaultVideoPoster: called")
             return if (customView == null) null
             else BitmapFactory.decodeResource(context.resources, 2130837573)
         }
 
         override fun onHideCustomView() = with(activityContext){
-            Log.e(tag, "onHideCustomView: called")
             (window.decorView as FrameLayout).removeView(customView)
             customView = null
             window.decorView.systemUiVisibility = originalSystemVisibility
@@ -143,7 +161,6 @@ class CustomWebView(
         }
 
         override fun onShowCustomView(view: View?, callback: CustomViewCallback?) {
-            Log.e(tag, "onShowCustomView: called")
             if(this.customView != null) {
                 onHideCustomView()
                 return
