@@ -70,7 +70,7 @@ afterEvaluate {
 
                 groupId = 'ru.github.imertvec'
                 artifactId = 'webview'
-                version = '1.0'
+                version = '3.3'
             }
         }
     }
