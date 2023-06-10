@@ -92,7 +92,7 @@ class CustomWebView (
         ): Boolean {
             return try {
                 val url = URLDecoder.decode(request?.url.toString(), "UTF-8")
-                Log.e(tag, "shouldOverrideUrlLoading: $url");
+                Log.i(tag, "?url= $url");
                 view?.loadUrl(url)
                 true
             } catch (e: Exception) {
@@ -126,7 +126,7 @@ class CustomWebView (
                 resultMsg.sendToTarget()
                 true
             } catch (e: Exception) {
-                Log.e(tag, "onCreateWindow: created", e)
+                Log.e(tag, "onCreateWindow: ", e)
                 false
             }
         }
