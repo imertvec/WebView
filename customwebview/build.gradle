@@ -60,6 +60,9 @@ dependencies {
 
     //gson
     implementation 'com.google.code.gson:gson:2.10.1'
+
+    //webkit
+    implementation 'androidx.webkit:webkit:1.7.0'
 }
 
 afterEvaluate {
